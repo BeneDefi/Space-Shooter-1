@@ -7,12 +7,12 @@
   "frame": {
     "version": "1",
     "name": "Space Shooter Game",
-    "iconUrl": "https://example.com/icon.png",
-    "homeUrl": "https://example.com",
-    "imageUrl": "https://example.com/preview.png",
+    "iconUrl": "https://i.imgur.com/GsMcnUq.jpeg",
+    "homeUrl": "https://space-shooter-1-1.onrender.com/",
+    "imageUrl": "https://i.imgur.com/GsMcnUq.jpeg",
     "buttonTitle": "Play Game",
-    "splashImageUrl": "https://example.com/splash.png",
-    "splashBackgroundColor": "#000000",
-    "webhookUrl": "https://example.com/webhook"
+    "splashImageUrl": "https://i.imgur.com/GsMcnUq.jpeg",
+    "splashBackgroundColor": "#800080",
+    "webhookUrl": "https://space-shooter-1-1.onrender.com/webhook"
   }
 }
