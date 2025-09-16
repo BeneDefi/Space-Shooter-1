@@ -1,0 +1,18 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjEsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhkOGQ5ZjNmMTkwZjkzOTYzZGUzZjE4YjZlY2I5ZGQyNzFlNWE4YzEwIn0",
+    "payload": "eyJkb21haW4iOiJleGFtcGxlLmNvbSJ9",
+    "signature": "0x..."
+  },
+  "frame": {
+    "version": "1",
+    "name": "Space Shooter Game",
+    "iconUrl": "https://example.com/icon.png",
+    "homeUrl": "https://example.com",
+    "imageUrl": "https://example.com/preview.png",
+    "buttonTitle": "Play Game",
+    "splashImageUrl": "https://example.com/splash.png",
+    "splashBackgroundColor": "#000000",
+    "webhookUrl": "https://example.com/webhook"
+  }
+}
