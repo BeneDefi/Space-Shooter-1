@@ -25,11 +25,11 @@ function AppContent() {
       setIsMiniApp(true);
       setShowMenu(false);
     }
-    
+
     // Initialize advanced systems
     GameAccessibility.initialize();
     AdvancedHaptics.initialize();
-    
+
     // Initialize audio elements
     const backgroundMusic = new Audio("/sounds/acrade_background.mp3");
     const hitSound = new Audio("/sounds/hit.mp3");
@@ -48,16 +48,16 @@ function AppContent() {
   }, [setBackgroundMusic, setHitSound, setSuccessSound, setShootSound, setGameOverSound]);
 
   // Call sdk.actions.ready() when app content is fully loaded and visible
-  // useEffect(() => {
-  //   if (isReady) {
-  //     const timer = setTimeout(() => {
-  //       (async () => {
-  //         await notifyReady();
-  //       })();
-  //     }, 100);
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [isReady, notifyReady]);  
+  useEffect(() => {
+    if (isReady) {
+      const timer = setTimeout(() => {
+        (async () => {
+          await notifyReady();
+        })();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isReady, notifyReady]);
 
   // Return to menu when game ends
   useEffect(() => {
@@ -79,12 +79,12 @@ function AppContent() {
 
   return (
     <div className={`w-full h-full bg-black ${showMenu ? 'overflow-y-auto' : 'overflow-hidden'}`}>
-      <MiniAppHeader 
+      <MiniAppHeader
         title="Galaxiga Classic Space Shooter"
         description="Battle aliens in space, earn tokens, compete with friends in this classic arcade shooter reimagined for Web3."
         imageUrl="https://galaxiga.game/og-image.png"
       />
-      
+
       {!isReady ? (
         <div className="flex items-center justify-center h-full bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
           <div className="text-center">
