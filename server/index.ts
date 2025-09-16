@@ -34,18 +34,35 @@ app.use(
         connectSrc: ["'self'", "ws:", "wss:"],
         fontSrc: ["'self'", "data:"],
         mediaSrc: ["'self'"],
+        frameAncestors: [
+          "'self'",
+          "https://warpcast.com",
+          "https://*.warpcast.com",
+          "https://farcaster.xyz",
+          "https://*.farcaster.xyz",
+          "https://frames.neynar.com",
+          "https://*.frames.neynar.com",
+          "https://client.warpcast.com",
+          "https://miniapp.warpcast.com",
+          "https://*.replit.com",
+          "https://*.repl.co",
+          "https://*.replit.dev",
+          "https://*.onrender.com",
+          "*" // Allow all origins for maximum compatibility
+        ],
       },
     },
     crossOriginEmbedderPolicy: false,
+    frameguard: false, // Disable X-Frame-Options since we're using CSP frame-ancestors
   })
 );
 
 app.use(
   cors({
-    origin: process.env.NODE_ENV === "production" ? false : true,
+    origin: true, // Allow all origins for frame embedding compatibility
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   })
 );
 
