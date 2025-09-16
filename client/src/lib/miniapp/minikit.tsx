@@ -85,17 +85,52 @@ export function MiniKitProvider({ children }: MiniKitProviderProps) {
 
           // Check if user is already signed in
           if (contextData?.user) {
-            console.log("👤 User found in context:", contextData.user);
-            setUser({
+            console.log("👤 User found in context:", {
+              fid: contextData.user.fid,
+              username: contextData.user.username, 
+              displayName: contextData.user.displayName,
+              pfpUrl: contextData.user.pfpUrl
+            });
+            
+            const userData = {
               fid: contextData.user.fid,
               username: contextData.user.username,
               displayName: contextData.user.displayName,
               pfpUrl: contextData.user.pfpUrl
-            });
+            };
+            
+            console.log("🖼️ Profile picture URL:", userData.pfpUrl);
+            setUser(userData);
+            setIsConnected(true);
+          } else {
+            console.log("👤 No user found in Farcaster context - setting up test user");
+            // Set test user when no Farcaster user is available (standalone mode)
+            const testUser = {
+              fid: 12345,
+              username: "testgamer", 
+              displayName: "Test Gamer",
+              pfpUrl: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face&facepad=2&fm=jpg&q=80"
+            };
+            
+            console.log("🧪 Setting up test user for demo:", testUser);
+            console.log("🖼️ Test profile picture URL:", testUser.pfpUrl);
+            setUser(testUser);
             setIsConnected(true);
           }
         } catch (contextError) {
-          console.log("📱 No Farcaster context (running standalone)");
+          console.log("📱 SDK context failed (running in standalone):", contextError);
+          console.log("🧪 Setting up fallback test user for demo purposes");
+          
+          const fallbackTestUser = {
+            fid: 54321,
+            username: "standalonegamer",
+            displayName: "Standalone Gamer", 
+            pfpUrl: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face&facepad=2&fm=jpg&q=80"
+          };
+          
+          console.log("👤 Fallback test user created:", fallbackTestUser);
+          setUser(fallbackTestUser);
+          setIsConnected(true);
         }
       };
 

@@ -20,6 +20,7 @@ import {
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByFarcasterFid(farcasterFid: number): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   saveHighScore?(userId: number, scoreData: Omit<HighScore, 'id' | 'userId'>): Promise<void>;
   getLeaderboard?(limit: number): Promise<HighScore[]>;
@@ -47,6 +48,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    return result[0];
+  }
+
+  async getUserByFarcasterFid(farcasterFid: number): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.farcasterFid, farcasterFid)).limit(1);
     return result[0];
   }
 
@@ -247,6 +253,12 @@ export class MemStorage implements IStorage {
   async getUserByUsername(username: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
       (user) => user.username === username,
+    );
+  }
+
+  async getUserByFarcasterFid(farcasterFid: number): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.farcasterFid === farcasterFid,
     );
   }
 

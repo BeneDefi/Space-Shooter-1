@@ -298,6 +298,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Farcaster FID-based player stats endpoints (required by frontend)
+  
+  // GET player stats by Farcaster FID
+  app.get('/api/player-stats/:farcasterFid', [
+    param('farcasterFid').isInt().withMessage('Invalid Farcaster FID'),
+    handleValidationErrors
+  ], async (req: Request, res: Response) => {
+    try {
+      const farcasterFid = parseInt(req.params.farcasterFid);
+      
+      // Find user by Farcaster FID
+      const user = await storage.getUserByFarcasterFid?.(farcasterFid);
+      if (!user) {
+        // Return default stats for new users
+        return res.json({
+          totalScore: 0,
+          highScore: 0,
+          enemiesDestroyed: 0,
+          gamesPlayed: 0,
+          timePlayedMinutes: 0,
+          socialShares: 0,
+          friendsInvited: 0,
+          farcasterFid
+        });
+      }
+      
+      const stats = await storage.getPlayerStats?.(user.id);
+      if (!stats) {
+        // Initialize stats if they don't exist
+        await storage.updatePlayerStats?.(user.id, {
+          totalScore: 0,
+          highScore: 0,
+          enemiesDestroyed: 0,
+          gamesPlayed: 0,
+          timePlayedMinutes: 0,
+          streakDays: 1,
+          socialShares: 0,
+          friendsInvited: 0,
+        });
+        
+        return res.json({
+          totalScore: 0,
+          highScore: 0,
+          enemiesDestroyed: 0,
+          gamesPlayed: 0,
+          timePlayedMinutes: 0,
+          socialShares: 0,
+          friendsInvited: 0,
+          farcasterFid
+        });
+      }
+      
+      res.json({
+        ...stats,
+        farcasterFid
+      });
+    } catch (error) {
+      console.error('Farcaster player stats error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // POST/UPDATE player stats by Farcaster FID  
+  app.post('/api/player-stats', [
+    body('farcasterFid').isInt().withMessage('Farcaster FID is required'),
+    body('totalScore').optional().isInt({ min: 0 }).withMessage('Invalid total score'),
+    body('highScore').optional().isInt({ min: 0 }).withMessage('Invalid high score'),
+    body('enemiesDestroyed').optional().isInt({ min: 0 }).withMessage('Invalid enemies destroyed'),
+    body('gamesPlayed').optional().isInt({ min: 0 }).withMessage('Invalid games played'),
+    body('timePlayedMinutes').optional().isInt({ min: 0 }).withMessage('Invalid time played'),
+    body('socialShares').optional().isInt({ min: 0 }).withMessage('Invalid social shares'),
+    body('friendsInvited').optional().isInt({ min: 0 }).withMessage('Invalid friends invited'),
+    handleValidationErrors
+  ], async (req: Request, res: Response) => {
+    try {
+      const { farcasterFid, ...statsData } = req.body;
+      
+      // Find or create user by Farcaster FID
+      let user = await storage.getUserByFarcasterFid?.(farcasterFid);
+      if (!user) {
+        // Create a new user for this Farcaster FID
+        user = await storage.createUser({
+          username: `farcaster_${farcasterFid}`,
+          password: Math.random().toString(36), // Random password for Farcaster users
+          farcasterFid,
+          displayName: `Player ${farcasterFid}`,
+        });
+      }
+      
+      // Update player stats
+      await storage.updatePlayerStats?.(user.id, {
+        ...statsData,
+        updatedAt: new Date(),
+      });
+      
+      res.json({ 
+        message: 'Player stats updated successfully',
+        farcasterFid,
+        userId: user.id
+      });
+    } catch (error) {
+      console.error('Update Farcaster player stats error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // Enhanced game session submission
   app.post('/api/game/session', [
     authenticateToken,

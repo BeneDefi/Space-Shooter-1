@@ -78,6 +78,9 @@ export const playerRankings = pgTable("player_rankings", {
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  displayName: true,
+  profilePicture: true,
+  farcasterFid: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

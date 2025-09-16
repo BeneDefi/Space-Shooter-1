@@ -26,7 +26,7 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
   useEffect(() => {
     if (user) {
       // Set user data in the store
-      setUserData(user.fid, user.displayName, user.pfpUrl);
+      setUserData(user.fid, user.displayName || `Player ${user.fid}`, user.pfpUrl || '');
       // Load player statistics
       loadPlayerStats(user.fid);
       
@@ -144,21 +144,38 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
           <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-cyan-500/30">
             <div className="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-4">
               {user ? (
-                <img
-                  src={user.pfpUrl}
-                  alt={user.displayName}
-                  className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-cyan-400"
-                  onError={(e) => {
-                    // Fallback to default avatar if image fails to load
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    target.nextElementSibling?.classList.remove('hidden');
-                  }}
-                />
-              ) : null}
-              <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center ${user ? 'hidden' : ''}`}>
-                <User className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-              </div>
+                <div className="relative w-12 h-12 sm:w-16 sm:h-16">
+                  {user.pfpUrl ? (
+                    <img
+                      src={user.pfpUrl}
+                      alt={user.displayName || 'User profile'}
+                      className="w-full h-full rounded-full border-2 border-cyan-400 object-cover"
+                      onError={(e) => {
+                        // Fallback to default avatar if image fails to load
+                        console.log('Profile picture failed to load:', user.pfpUrl);
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallbackDiv = target.nextElementSibling as HTMLDivElement;
+                        if (fallbackDiv) {
+                          fallbackDiv.classList.remove('hidden');
+                        }
+                      }}
+                      onLoad={() => {
+                        console.log('Profile picture loaded successfully:', user.pfpUrl);
+                      }}
+                    />
+                  ) : null}
+                  <div className={`absolute inset-0 w-full h-full bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center border-2 border-cyan-400 ${user.pfpUrl ? 'hidden' : ''}`}>
+                    <span className="text-white font-bold text-sm sm:text-base">
+                      {user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center border-2 border-cyan-400">
+                  <User className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+                </div>
+              )}
               <div className="flex-1">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-1">
                   <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white truncate">
