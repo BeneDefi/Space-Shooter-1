@@ -404,6 +404,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Daily login tracking
+  app.post('/api/daily-login', [
+    body('farcasterFid').isInt().withMessage('Valid Farcaster FID required'),
+    handleValidationErrors
+  ], async (req: Request, res: Response) => {
+    try {
+      const { farcasterFid } = req.body;
+
+      // Find user by Farcaster FID
+      let user = await storage.getUserByFarcasterFid(farcasterFid);
+      
+      if (!user) {
+        // Create user if doesn't exist
+        const userData = {
+          username: `farcaster_${farcasterFid}`,
+          password: 'farcaster-user', // placeholder for Farcaster users
+          displayName: `Player ${farcasterFid}`,
+          farcasterFid: farcasterFid,
+        };
+        user = await storage.createUser(userData);
+      }
+
+      // Handle daily login
+      const loginResult = await storage.handleDailyLogin(user.id);
+
+      res.json({
+        success: true,
+        streakDays: loginResult.streakDays,
+        dailyLogins: loginResult.dailyLogins,
+        message: `Login streak: ${loginResult.streakDays} days`
+      });
+
+    } catch (error) {
+      console.error('Daily login error:', error);
+      res.status(500).json({ 
+        error: 'Failed to process daily login',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Enhanced game session submission
   app.post('/api/game/session', [
     authenticateToken,

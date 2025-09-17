@@ -23,8 +23,11 @@ export const playerStats = pgTable("player_stats", {
   gamesPlayed: integer("games_played").default(0).notNull(),
   timePlayedMinutes: integer("time_played_minutes").default(0).notNull(),
   streakDays: integer("streak_days").default(1).notNull(),
+  maxStreak: integer("max_streak").default(1).notNull(),
+  dailyLogins: integer("daily_logins").default(1).notNull(),
   socialShares: integer("social_shares").default(0).notNull(),
   friendsInvited: integer("friends_invited").default(0).notNull(),
+  lastLoginAt: timestamp("last_login_at").defaultNow().notNull(),
   lastPlayedAt: timestamp("last_played_at"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -90,3 +93,28 @@ export type GameSession = typeof gameSessions.$inferSelect;
 export type HighScore = typeof highScores.$inferSelect;
 export type UserAchievement = typeof userAchievements.$inferSelect;
 export type PlayerRanking = typeof playerRankings.$inferSelect;
+
+// Daily login tracking
+export const dailyLogins = pgTable("daily_logins", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  loginDate: text("login_date").notNull(), // YYYY-MM-DD format
+  loginCount: integer("login_count").default(1).notNull(),
+  streakDay: integer("streak_day").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Purchase history table
+export const purchaseHistory = pgTable("purchase_history", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  itemId: integer("item_id").notNull(),
+  itemName: text("item_name").notNull(),
+  itemType: text("item_type").notNull(), // weapon, defense, upgrade
+  price: integer("price").notNull(),
+  currency: text("currency").default("GALAXIGA").notNull(),
+  purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
+});
+
+export type DailyLogin = typeof dailyLogins.$inferSelect;
+export type PurchaseHistory = typeof purchaseHistory.$inferSelect;

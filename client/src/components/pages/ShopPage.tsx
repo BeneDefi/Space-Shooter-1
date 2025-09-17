@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ArrowLeft, ShoppingCart, Zap, Shield, Rocket, Plus } from "lucide-react";
 import Toast from '../Toast';
+import { usePlayerStats } from '../../lib/stores/usePlayerStats';
 
 interface ShopPageProps {
   onBack: () => void;
@@ -55,10 +56,32 @@ export default function ShopPage({ onBack }: ShopPageProps) {
       delay: Math.random() * 3
     })), []);
 
+  const { stats, addPurchase } = usePlayerStats();
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   
-  const handlePurchaseAttempt = () => {
-    setShowToast(true);
+  // Calculate GALAXIGA tokens from achievements (placeholder calculation)
+  const availableTokens = Math.floor(stats.totalScore / 100) + (stats.enemiesDestroyed * 2);
+  
+  const handlePurchaseAttempt = (item: typeof shopItems[0]) => {
+    if (availableTokens >= item.price) {
+      // Simulate successful purchase
+      const purchase = {
+        id: Date.now(),
+        itemName: item.name,
+        itemType: item.category,
+        price: item.price,
+        currency: 'GALAXIGA',
+        purchasedAt: new Date(),
+      };
+      
+      addPurchase(purchase);
+      setToastMessage(`🚀 Successfully purchased ${item.name}! This will be available in future versions.`);
+      setShowToast(true);
+    } else {
+      setToastMessage('🚫 Insufficient GALAXIGA tokens! Play more to earn tokens.');
+      setShowToast(true);
+    }
   };
     
   return (
@@ -101,7 +124,7 @@ export default function ShopPage({ onBack }: ShopPageProps) {
           <div className="bg-slate-800/80 backdrop-blur-sm rounded-xl px-2 py-1 sm:px-3 sm:py-2 md:px-4 md:py-2 border border-cyan-500/30">
             <div className="flex items-center space-x-1 sm:space-x-2">
               <div className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 bg-cyan-400 rounded-full" />
-              <span className="text-cyan-400 font-bold text-sm sm:text-base md:text-lg">0</span>
+              <span className="text-cyan-400 font-bold text-sm sm:text-base md:text-lg">{availableTokens.toLocaleString()}</span>
               <span className="text-gray-300 text-xs sm:text-sm md:text-base truncate">GALAXIGA</span>
             </div>
           </div>
@@ -160,7 +183,7 @@ export default function ShopPage({ onBack }: ShopPageProps) {
                       <span className="text-lg sm:text-xl font-bold text-cyan-400">{item.price}</span>
                     </div>
                     <button 
-                      onClick={handlePurchaseAttempt}
+                      onClick={() => handlePurchaseAttempt(item)}
                       className="bg-cyan-500 hover:bg-cyan-400 text-black font-medium px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-colors duration-200 flex items-center space-x-1 sm:space-x-2 min-h-[44px]"
                     >
                       <Plus className="w-4 h-4" />
@@ -182,7 +205,7 @@ export default function ShopPage({ onBack }: ShopPageProps) {
       </div>
       
       <Toast
-        message="🚀 Stay engaged! Store purchases will come with the next version!"
+        message={toastMessage || "🚀 Stay engaged! Store purchases will come with the next version!"}
         isVisible={showToast}
         onClose={() => setShowToast(false)}
       />
