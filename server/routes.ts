@@ -427,7 +427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Handle daily login
-      const loginResult = await storage.handleDailyLogin(user.id);
+      const loginResult = await storage.handleDailyLogin?.(user.id) || { streakDays: 1, dailyLogins: 1 };
 
       res.json({
         success: true,
@@ -442,6 +442,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: 'Failed to process daily login',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
+    }
+  });
+
+  // Get game sessions by Farcaster FID for profile page
+  app.get('/api/player-sessions/:farcasterFid', [
+    param('farcasterFid').isInt().withMessage('Invalid Farcaster FID'),
+    query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Invalid limit'),
+    handleValidationErrors
+  ], async (req: Request, res: Response) => {
+    try {
+      const farcasterFid = parseInt(req.params.farcasterFid);
+      const limit = parseInt(req.query.limit as string) || 20;
+      
+      // Find user by Farcaster FID
+      const user = await storage.getUserByFarcasterFid?.(farcasterFid);
+      if (!user) {
+        return res.json({ sessions: [], totalGames: 0 });
+      }
+      
+      // Get player profile which includes recent sessions
+      const profile = await storage.getPlayerProfile?.(user.id);
+      if (!profile || !profile.recentSessions) {
+        return res.json({ sessions: [], totalGames: 0 });
+      }
+      
+      res.json({
+        sessions: profile.recentSessions.slice(0, limit),
+        totalGames: profile.stats?.gamesPlayed || 0,
+        player: {
+          displayName: user.displayName,
+          username: user.username,
+          farcasterFid: user.farcasterFid
+        }
+      });
+    } catch (error) {
+      console.error('Game sessions error:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   });
 

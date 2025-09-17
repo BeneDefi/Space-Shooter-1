@@ -318,12 +318,20 @@ export class DatabaseStorage implements IStorage {
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private highScores: HighScore[];
+  private playerStats: Map<number, PlayerStats>;
+  private gameSessions: Map<number, GameSession[]>;
   currentId: number;
+  currentStatsId: number;
+  currentSessionId: number;
 
   constructor() {
     this.users = new Map();
     this.highScores = [];
+    this.playerStats = new Map();
+    this.gameSessions = new Map();
     this.currentId = 1;
+    this.currentStatsId = 1;
+    this.currentSessionId = 1;
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -358,17 +366,67 @@ export class MemStorage implements IStorage {
     return user;
   }
 
-  async getPlayerStats(): Promise<PlayerStats | undefined> {
-    // Mock implementation
-    return undefined;
+  async getPlayerStats(userId: number): Promise<PlayerStats | undefined> {
+    return this.playerStats.get(userId);
   }
 
-  async updatePlayerStats(): Promise<void> {
-    // Mock implementation
+  async updatePlayerStats(userId: number, stats: Partial<PlayerStats>): Promise<void> {
+    const currentStats = this.playerStats.get(userId);
+    if (currentStats) {
+      this.playerStats.set(userId, { ...currentStats, ...stats, updatedAt: new Date() });
+    } else {
+      // Create new stats
+      const newStats: PlayerStats = {
+        id: this.currentStatsId++,
+        userId,
+        totalScore: 0,
+        highScore: 0,
+        enemiesDestroyed: 0,
+        gamesPlayed: 0,
+        timePlayedMinutes: 0,
+        streakDays: 1,
+        maxStreak: 1,
+        dailyLogins: 1,
+        socialShares: 0,
+        friendsInvited: 0,
+        lastLoginAt: new Date(),
+        lastPlayedAt: null,
+        updatedAt: new Date(),
+        ...stats
+      };
+      this.playerStats.set(userId, newStats);
+    }
   }
 
-  async saveGameSession(): Promise<void> {
-    // Mock implementation
+  async saveGameSession(userId: number, sessionData: Omit<GameSession, 'id' | 'userId' | 'playedAt'>): Promise<void> {
+    const session: GameSession = {
+      id: this.currentSessionId++,
+      userId,
+      playedAt: new Date(),
+      ...sessionData
+    };
+    
+    const userSessions = this.gameSessions.get(userId) || [];
+    userSessions.push(session);
+    this.gameSessions.set(userId, userSessions);
+    
+    // Update player stats
+    const currentStats = this.playerStats.get(userId);
+    if (currentStats) {
+      const updatedStats = {
+        gamesPlayed: currentStats.gamesPlayed + 1,
+        totalScore: currentStats.totalScore + sessionData.score,
+        enemiesDestroyed: currentStats.enemiesDestroyed + sessionData.enemiesKilled,
+        timePlayedMinutes: currentStats.timePlayedMinutes + Math.round(sessionData.gameTime / 60000),
+        lastPlayedAt: new Date(),
+      };
+      
+      if (sessionData.score > currentStats.highScore) {
+        (updatedStats as any).highScore = sessionData.score;
+      }
+      
+      await this.updatePlayerStats(userId, updatedStats);
+    }
   }
 
   async getPlayerRankings(): Promise<PlayerRanking[]> {
@@ -379,8 +437,17 @@ export class MemStorage implements IStorage {
     return [];
   }
 
-  async getPlayerProfile(): Promise<any> {
-    return {};
+  async getPlayerProfile(userId: number): Promise<any> {
+    const user = await this.getUser(userId);
+    const stats = await this.getPlayerStats(userId);
+    const userSessions = this.gameSessions.get(userId) || [];
+    
+    return {
+      user,
+      stats,
+      rankings: [],
+      recentSessions: userSessions.slice(-10).reverse() // Last 10 sessions, newest first
+    };
   }
 
   async searchPlayers(): Promise<User[]> {
@@ -389,6 +456,33 @@ export class MemStorage implements IStorage {
 
   async updatePlayerRankings(): Promise<void> {
     // Mock implementation
+  }
+
+  async handleDailyLogin(userId: number): Promise<{ streakDays: number; dailyLogins: number }> {
+    const stats = await this.getPlayerStats(userId);
+    if (stats) {
+      const newStreak = stats.streakDays + 1;
+      const newDailyLogins = stats.dailyLogins + 1;
+      
+      await this.updatePlayerStats(userId, {
+        streakDays: newStreak,
+        maxStreak: Math.max(stats.maxStreak, newStreak),
+        dailyLogins: newDailyLogins,
+        lastLoginAt: new Date()
+      });
+      
+      return { streakDays: newStreak, dailyLogins: newDailyLogins };
+    }
+    return { streakDays: 1, dailyLogins: 1 };
+  }
+
+  async savePurchase(): Promise<void> {
+    // Mock implementation
+  }
+
+  async getPurchaseHistory(): Promise<any[]> {
+    // Mock implementation
+    return [];
   }
 
   async saveHighScore(userId: number, scoreData: Omit<HighScore, 'id' | 'userId'>): Promise<void> {

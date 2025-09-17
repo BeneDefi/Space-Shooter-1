@@ -22,6 +22,8 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
   const [friendsRanking, setFriendsRanking] = useState<any[]>([]);
   const [totalRewards, setTotalRewards] = useState(0);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [gameSessions, setGameSessions] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -35,6 +37,9 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
       
       // Load social data
       loadSocialData(user.fid);
+      
+      // Load detailed game history
+      loadGameHistory(user.fid);
     }
   }, [user, loadPlayerStats, setUserData, checkDailyLogin]);
 
@@ -55,6 +60,48 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
     }
   };
 
+  const loadGameHistory = async (fid: number) => {
+    setLoadingHistory(true);
+    try {
+      const response = await fetch(`/api/player-sessions/${fid}?limit=20`);
+      if (response.ok) {
+        const data = await response.json();
+        const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+        setGameSessions(sessions);
+        
+        // Create recent activity from game sessions with validation
+        const activities = sessions.slice(0, 5).map((session: any, index: number) => {
+          // Validate session data and provide fallbacks
+          const safeScore = typeof session.score === 'number' ? session.score : 0;
+          const safeLevel = typeof session.level === 'number' ? session.level : 1;
+          const safeGameTime = typeof session.gameTime === 'number' ? session.gameTime : 0;
+          const safePlayedAt = session.playedAt ? new Date(session.playedAt) : new Date();
+          
+          return {
+            id: `session-${session.id || index}`,
+            type: 'game',
+            title: `Game Session #${sessions.length - index}`,
+            description: `Score: ${safeScore.toLocaleString()} | Level: ${safeLevel} | ${Math.round(safeGameTime / 60000)}m ${Math.round((safeGameTime % 60000) / 1000)}s`,
+            timestamp: safePlayedAt,
+            icon: 'gamepad',
+            value: safeScore
+          };
+        });
+        setRecentActivity(activities);
+      } else {
+        console.warn('Failed to fetch game sessions:', response.status, response.statusText);
+        setGameSessions([]);
+        setRecentActivity([]);
+      }
+    } catch (error) {
+      console.error('Failed to load game history:', error);
+      setGameSessions([]);
+      setRecentActivity([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   // Calculate experience level based on total score
   const experienceLevel = Math.floor(stats.totalScore / 1000) + 1;
   const nextLevelXP = experienceLevel * 1000;
@@ -66,6 +113,29 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
     const mins = minutes % 60;
     return `${hours}h ${mins}m`;
   };
+
+  // Format game time from milliseconds
+  const formatGameTime = (milliseconds: number) => {
+    const minutes = Math.floor(milliseconds / 60000);
+    const seconds = Math.floor((milliseconds % 60000) / 1000);
+    return `${minutes}m ${seconds}s`;
+  };
+
+  // Calculate average score
+  const averageScore = stats.gamesPlayed > 0 ? Math.round(stats.totalScore / stats.gamesPlayed) : 0;
+  
+  // Calculate accuracy from game sessions with error handling
+  const calculateOverallAccuracy = () => {
+    if (!Array.isArray(gameSessions) || gameSessions.length === 0) return 0;
+    const accuracySessions = gameSessions.filter(s => 
+      s && typeof s.accuracy === 'number' && s.accuracy >= 0 && s.accuracy <= 1
+    );
+    if (accuracySessions.length === 0) return 0;
+    const totalAccuracy = accuracySessions.reduce((sum, s) => sum + (s.accuracy * 100), 0);
+    return Math.round(totalAccuracy / accuracySessions.length);
+  };
+  
+  const overallAccuracy = calculateOverallAccuracy();
 
   // Calculate total GALAXIGA rewards
   useEffect(() => {
@@ -404,15 +474,170 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
             </div>
           </div>
 
-          {/* Recent Activity */}
-          <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl p-6 border border-cyan-500/30">
-            <div className="flex items-center space-x-3 mb-4">
-              <TrendingUp className="w-6 h-6 text-green-400" />
-              <h3 className="text-xl font-bold text-white">Recent Activity</h3>
+          {/* Enhanced Statistics */}
+          <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-cyan-500/30">
+            <div className="flex items-center space-x-2 sm:space-x-3 mb-3 sm:mb-4">
+              <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
+              <h3 className="text-lg sm:text-xl font-bold text-white">Performance Analytics</h3>
             </div>
             
-            <div className="space-y-3">
-              {stats.gamesPlayed > 0 ? (
+            <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-3 sm:mb-4">
+              <div className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-lg p-3 sm:p-4 border border-purple-500/30">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center space-x-2 min-w-0">
+                    <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 shrink-0" />
+                    <span className="text-xs sm:text-sm text-white font-medium truncate">Avg Score</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg sm:text-xl font-bold text-purple-400">{averageScore.toLocaleString()}</div>
+                    <div className="text-xs text-gray-400">per game</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-lg p-3 sm:p-4 border border-cyan-500/30">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center space-x-2 min-w-0">
+                    <Target className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400 shrink-0" />
+                    <span className="text-xs sm:text-sm text-white font-medium truncate">Accuracy</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg sm:text-xl font-bold text-cyan-400">{overallAccuracy}%</div>
+                    <div className="text-xs text-gray-400">overall</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-lg p-3 sm:p-4 border border-green-500/30">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center space-x-2 min-w-0">
+                  <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 shrink-0" />
+                  <span className="text-sm sm:text-base text-white font-medium truncate">Total Score Accumulated</span>
+                </div>
+                <div className="text-xl sm:text-2xl font-bold text-green-400">{stats.totalScore.toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Game History */}
+          <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-cyan-500/30">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <Gamepad2 className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
+                <h3 className="text-lg sm:text-xl font-bold text-white">Game History</h3>
+              </div>
+              {gameSessions.length > 0 && (
+                <div className="text-xs sm:text-sm text-gray-400">
+                  {gameSessions.length} recent games
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-2 sm:space-y-3 max-h-80 overflow-y-auto">
+              {loadingHistory ? (
+                <div className="text-center py-4 text-gray-400">
+                  Loading game history...
+                </div>
+              ) : gameSessions.length > 0 ? (
+                gameSessions.map((session, index) => {
+                  const gameDate = new Date(session.playedAt);
+                  const isToday = gameDate.toDateString() === new Date().toDateString();
+                  const isYesterday = gameDate.toDateString() === new Date(Date.now() - 86400000).toDateString();
+                  
+                  let dateLabel = gameDate.toLocaleDateString();
+                  if (isToday) dateLabel = 'Today';
+                  else if (isYesterday) dateLabel = 'Yesterday';
+                  
+                  return (
+                    <div key={session.id || index} className="p-3 sm:p-4 bg-slate-700/50 rounded-lg border border-gray-600/30 hover:border-cyan-500/30 transition-all duration-300">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start space-x-3 flex-1 min-w-0">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center shrink-0">
+                            <span className="text-white font-bold text-xs sm:text-sm">#{gameSessions.length - index}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <h4 className="text-white font-medium text-sm sm:text-base truncate">Game #{gameSessions.length - index}</h4>
+                              <div className="text-xs text-gray-400">{dateLabel}</div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
+                              <div>
+                                <span className="text-gray-400">Score: </span>
+                                <span className="text-cyan-400 font-medium">{session.score.toLocaleString()}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-400">Level: </span>
+                                <span className="text-white font-medium">{session.level}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-400">Enemies: </span>
+                                <span className="text-orange-400 font-medium">{session.enemiesKilled}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-400">Time: </span>
+                                <span className="text-green-400 font-medium">{formatGameTime(session.gameTime)}</span>
+                              </div>
+                              {session.accuracy && (
+                                <div className="col-span-2">
+                                  <span className="text-gray-400">Accuracy: </span>
+                                  <span className="text-purple-400 font-medium">{Math.round(session.accuracy * 100)}%</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end text-right shrink-0">
+                          <div className="text-lg sm:text-xl font-bold text-cyan-400">{session.score.toLocaleString()}</div>
+                          <div className="text-xs text-gray-400">
+                            {gameDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  <Gamepad2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No games played yet</p>
+                  <p className="text-sm">Start playing to see your game history!</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-cyan-500/30">
+            <div className="flex items-center space-x-2 sm:space-x-3 mb-3 sm:mb-4">
+              <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-green-400" />
+              <h3 className="text-lg sm:text-xl font-bold text-white">Recent Activity</h3>
+            </div>
+            
+            <div className="space-y-2 sm:space-y-3">
+              {recentActivity.length > 0 ? (
+                recentActivity.map((activity, index) => (
+                  <div key={activity.id || index} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center">
+                        <Gamepad2 className="w-4 h-4 text-green-400" />
+                      </div>
+                      <div>
+                        <p className="text-white text-sm font-medium">{activity.title}</p>
+                        <p className="text-gray-400 text-xs">{activity.description}</p>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {activity.timestamp ? 
+                        activity.timestamp.toLocaleDateString() === new Date().toLocaleDateString() ? 'Today' :
+                        activity.timestamp.toLocaleDateString() === new Date(Date.now() - 86400000).toLocaleDateString() ? 'Yesterday' :
+                        activity.timestamp.toLocaleDateString()
+                        : 'Recent'
+                      }
+                    </div>
+                  </div>
+                ))
+              ) : (
                 <>
                   <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
                     <div className="flex items-center space-x-3">
@@ -420,13 +645,13 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
                         <Gamepad2 className="w-4 h-4 text-green-400" />
                       </div>
                       <div>
-                        <p className="text-white text-sm font-medium">Last High Score</p>
+                        <p className="text-white text-sm font-medium">High Score</p>
                         <p className="text-gray-400 text-xs">
                           {stats.highScore.toLocaleString()} points
                         </p>
                       </div>
                     </div>
-                    <div className="text-xs text-gray-500">Recent</div>
+                    <div className="text-xs text-gray-500">Best</div>
                   </div>
                   
                   <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
@@ -463,12 +688,6 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
                     </div>
                   )}
                 </>
-              ) : (
-                <div className="text-center py-6 text-gray-400">
-                  <TrendingUp className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                  <p>No recent activity</p>
-                  <p className="text-sm">Start playing to see your activity!</p>
-                </div>
               )}
             </div>
           </div>
