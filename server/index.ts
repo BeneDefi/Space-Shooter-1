@@ -15,9 +15,9 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Trust proxy: only enable in production behind a proxy
-if (process.env.NODE_ENV === "production") {
-  app.set("trust proxy", 1); // trust first proxy (Render, Heroku, etc.)
+// ✅ Trust proxy: enable for Replit environment
+if (process.env.NODE_ENV === "production" || process.env.REPL_ID) {
+  app.set("trust proxy", 1); // trust first proxy (Render, Heroku, Replit, etc.)
 } else {
   app.set("trust proxy", false); // local dev
 }
