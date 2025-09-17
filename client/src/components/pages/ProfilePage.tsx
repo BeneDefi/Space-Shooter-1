@@ -1,4 +1,4 @@
-import { ArrowLeft, User, Trophy, Target, Package, Star, Zap, Shield, Rocket, Crown, Medal, TrendingUp, Clock, Gamepad2, Calendar, Award, Users } from "lucide-react";
+import { ArrowLeft, User, Trophy, Target, Package, Star, Zap, Shield, Rocket, Crown, Medal, TrendingUp, Clock, Gamepad2, Calendar, Award, Users, Flame, ShoppingBag, Gift, Activity, Heart } from "lucide-react";
 import { useMiniKit } from "../../lib/miniapp/minikit";
 import { usePlayerStats } from "../../lib/stores/usePlayerStats";
 import { useEffect, useState } from "react";
@@ -17,7 +17,7 @@ const inventory = [
 
 export default function ProfilePage({ onBack }: ProfilePageProps) {
   const { user } = useMiniKit();
-  const { stats, isLoading, loadPlayerStats, setUserData } = usePlayerStats();
+  const { stats, isLoading, loadPlayerStats, setUserData, checkDailyLogin, purchaseHistory, currentStreak, lastLoginDate } = usePlayerStats();
   const [playerRank, setPlayerRank] = useState<number | null>(null);
   const [friendsRanking, setFriendsRanking] = useState<any[]>([]);
   const [totalRewards, setTotalRewards] = useState(0);
@@ -30,10 +30,13 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
       // Load player statistics
       loadPlayerStats(user.fid);
       
+      // Check daily login
+      checkDailyLogin();
+      
       // Load social data
       loadSocialData(user.fid);
     }
-  }, [user, loadPlayerStats, setUserData]);
+  }, [user, loadPlayerStats, setUserData, checkDailyLogin]);
 
   const loadSocialData = async (fid: number) => {
     try {
@@ -242,6 +245,51 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
                   <span className="text-sm sm:text-base text-white font-medium truncate">GALAXIGA Tokens</span>
                 </div>
                 <div className="text-xl sm:text-2xl font-bold text-yellow-400">{totalRewards.toLocaleString()}</div>
+              </div>
+            </div>
+
+            {/* Enhanced Streak & Login Stats */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-4 mt-3 sm:mt-4">
+              {/* Current Streak */}
+              <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-lg p-3 sm:p-4 border border-orange-500/30">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center space-x-2 min-w-0">
+                    <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-orange-400 shrink-0" />
+                    <span className="text-xs sm:text-sm text-white font-medium truncate">Current Streak</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg sm:text-xl font-bold text-orange-400">{currentStreak}</div>
+                    <div className="text-xs text-gray-400">days</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Max Streak */}
+              <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg p-3 sm:p-4 border border-purple-500/30">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center space-x-2 min-w-0">
+                    <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 shrink-0" />
+                    <span className="text-xs sm:text-sm text-white font-medium truncate">Best Streak</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg sm:text-xl font-bold text-purple-400">{stats.maxStreak}</div>
+                    <div className="text-xs text-gray-400">days</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Login Status */}
+            <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-lg p-3 sm:p-4 border border-green-500/30 mt-3 sm:mt-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center space-x-2 min-w-0">
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 shrink-0" />
+                  <span className="text-sm sm:text-base text-white font-medium truncate">Login Days</span>
+                </div>
+                <div className="text-right">
+                  <div className="text-xl sm:text-2xl font-bold text-green-400">{stats.dailyLogins}</div>
+                  <div className="text-xs text-gray-400">total days</div>
+                </div>
               </div>
             </div>
           </div>
@@ -473,6 +521,93 @@ export default function ProfilePage({ onBack }: ProfilePageProps) {
               </div>
             )}
           </div>
+
+          {/* Purchase History */}
+          {purchaseHistory.length > 0 && (
+            <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl p-6 border border-cyan-500/30">
+              <div className="flex items-center space-x-3 mb-4">
+                <ShoppingBag className="w-6 h-6 text-cyan-400" />
+                <h3 className="text-xl font-bold text-white">Purchase History</h3>
+                <div className="bg-cyan-500/20 px-2 py-1 rounded-full">
+                  <span className="text-cyan-400 text-xs font-medium">{purchaseHistory.length}</span>
+                </div>
+              </div>
+              
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {purchaseHistory.slice(0, 10).map((purchase) => (
+                  <div key={purchase.id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        purchase.itemType === 'weapons' ? 'bg-red-500/20 border border-red-500/50' :
+                        purchase.itemType === 'defense' ? 'bg-blue-500/20 border border-blue-500/50' :
+                        'bg-green-500/20 border border-green-500/50'
+                      }`}>
+                        {purchase.itemType === 'weapons' ? <Zap className="w-4 h-4 text-red-400" /> :
+                         purchase.itemType === 'defense' ? <Shield className="w-4 h-4 text-blue-400" /> :
+                         <Rocket className="w-4 h-4 text-green-400" />}
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-white text-sm">{purchase.itemName}</h4>
+                        <p className="text-xs text-gray-400 capitalize">{purchase.itemType}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center space-x-1 text-cyan-400">
+                        <div className="w-3 h-3 bg-cyan-400 rounded-full" />
+                        <span className="text-sm font-medium">{purchase.price}</span>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(purchase.purchasedAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {purchaseHistory.length > 10 && (
+                  <div className="text-center py-2">
+                    <span className="text-xs text-gray-400">
+                      +{purchaseHistory.length - 10} more purchases
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Enhanced Social Features */}
+          {user && (
+            <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl p-6 border border-cyan-500/30">
+              <div className="flex items-center space-x-3 mb-4">
+                <Heart className="w-6 h-6 text-pink-400" />
+                <h3 className="text-xl font-bold text-white">Farcaster Profile</h3>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg border border-blue-500/30">
+                  <img 
+                    src={user.pfpUrl} 
+                    alt={user.displayName || 'Profile'} 
+                    className="w-12 h-12 rounded-full border-2 border-cyan-400"
+                  />
+                  <div>
+                    <h4 className="font-bold text-white">{user.displayName}</h4>
+                    <p className="text-cyan-400">@{user.username || `fid:${user.fid}`}</p>
+                    <p className="text-xs text-gray-400">FID: {user.fid}</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-700/50 rounded-lg p-3 text-center">
+                    <div className="text-lg font-bold text-cyan-400">{stats.socialShares}</div>
+                    <div className="text-xs text-gray-400">Shares</div>
+                  </div>
+                  <div className="bg-slate-700/50 rounded-lg p-3 text-center">
+                    <div className="text-lg font-bold text-cyan-400">{stats.friendsInvited}</div>
+                    <div className="text-xs text-gray-400">Invited</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

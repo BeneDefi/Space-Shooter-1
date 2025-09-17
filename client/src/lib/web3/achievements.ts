@@ -21,6 +21,8 @@ export interface Achievement {
     gamesPlayed: number;
     timePlayedMinutes: number;
     streakDays: number;
+    maxStreak: number;
+    dailyLogins: number;
     socialShares: number;
     friendsInvited: number;
   }
@@ -96,6 +98,32 @@ export interface Achievement {
       icon: '🏃',
       condition: (stats) => stats.timePlayedMinutes >= 60,
       reward: 30,
+    },
+    {
+      id: 'login_warrior',
+      name: 'Login Warrior',
+      description: 'Login 30 days total',
+      icon: '⚔️',
+      condition: (stats) => stats.dailyLogins >= 30,
+      reward: 300,
+      nftMetadata: {
+        name: 'Galaxiga Login Warrior',
+        description: 'Committed player with 30 total login days',
+        image: '/achievements/login-warrior.png'
+      }
+    },
+    {
+      id: 'streak_master',
+      name: 'Streak Master',
+      description: 'Achieve a 30-day login streak',
+      icon: '🔥',
+      condition: (stats) => stats.maxStreak >= 30,
+      reward: 500,
+      nftMetadata: {
+        name: 'Galaxiga Streak Master',
+        description: 'Elite dedication with 30 consecutive days',
+        image: '/achievements/streak-master.png'
+      }
     }
   ];
   

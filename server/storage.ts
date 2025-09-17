@@ -8,12 +8,16 @@ import {
   playerRankings,
   userAchievements,
   highScores,
+  dailyLogins,
+  purchaseHistory,
   type User, 
   type InsertUser, 
   type HighScore,
   type PlayerStats,
   type GameSession,
-  type PlayerRanking
+  type PlayerRanking,
+  type DailyLogin,
+  type PurchaseHistory
 } from "@shared/schema";
 
 
@@ -34,6 +38,11 @@ export interface IStorage {
   getPlayerProfile(userId: number): Promise<any>;
   searchPlayers(query: string, limit?: number): Promise<User[]>;
   updatePlayerRankings(): Promise<void>;
+  
+  // Daily login and purchase tracking
+  handleDailyLogin(userId: number): Promise<{ streakDays: number; dailyLogins: number }>;
+  savePurchase(userId: number, purchase: any): Promise<void>;
+  getPurchaseHistory(userId: number, limit?: number): Promise<any[]>;
 }
 
 // Database connection
@@ -114,6 +123,77 @@ export class DatabaseStorage implements IStorage {
 
   async getPlayerRankings(userId: number): Promise<PlayerRanking[]> {
     return await db.select().from(playerRankings).where(eq(playerRankings.userId, userId));
+  }
+
+  async handleDailyLogin(userId: number): Promise<{ streakDays: number; dailyLogins: number }> {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    // Check if user already logged in today
+    const todayLogin = await db.select().from(dailyLogins)
+      .where(and(eq(dailyLogins.userId, userId), eq(dailyLogins.loginDate, today)))
+      .limit(1);
+    
+    if (todayLogin.length > 0) {
+      // Already logged in today, return current streak
+      const stats = await this.getPlayerStats(userId);
+      return {
+        streakDays: stats?.streakDays || 1,
+        dailyLogins: stats?.dailyLogins || 1
+      };
+    }
+    
+    // Check yesterday's login for streak calculation
+    const yesterdayLogin = await db.select().from(dailyLogins)
+      .where(and(eq(dailyLogins.userId, userId), eq(dailyLogins.loginDate, yesterday)))
+      .limit(1);
+    
+    const currentStats = await this.getPlayerStats(userId);
+    let newStreak = 1;
+    let newDailyLogins = (currentStats?.dailyLogins || 0) + 1;
+    
+    if (yesterdayLogin.length > 0) {
+      // Continue streak
+      newStreak = (currentStats?.streakDays || 1) + 1;
+    }
+    
+    // Record today's login
+    await db.insert(dailyLogins).values({
+      userId,
+      loginDate: today,
+      loginCount: 1,
+      streakDay: newStreak,
+    });
+    
+    // Update player stats
+    await this.updatePlayerStats(userId, {
+      streakDays: newStreak,
+      maxStreak: Math.max(currentStats?.maxStreak || 1, newStreak),
+      dailyLogins: newDailyLogins,
+      lastLoginAt: new Date(),
+    });
+    
+    return { streakDays: newStreak, dailyLogins: newDailyLogins };
+  }
+  
+  async savePurchase(userId: number, purchase: {
+    itemId: number;
+    itemName: string;
+    itemType: string;
+    price: number;
+    currency: string;
+  }): Promise<void> {
+    await db.insert(purchaseHistory).values({
+      userId,
+      ...purchase,
+    });
+  }
+  
+  async getPurchaseHistory(userId: number, limit: number = 50): Promise<any[]> {
+    return await db.select().from(purchaseHistory)
+      .where(eq(purchaseHistory.userId, userId))
+      .orderBy(desc(purchaseHistory.purchasedAt))
+      .limit(limit);
   }
 
   async getTopPlayers(category: string = 'score', timeframe: 'daily' | 'weekly' | 'monthly' | 'all' = 'all', limit: number = 10): Promise<any[]> {
