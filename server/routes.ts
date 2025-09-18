@@ -17,6 +17,10 @@ if (!JWT_SECRET || !GAME_ENCRYPTION_KEY) {
   process.exit(1);
 }
 
+// Type-safe constants after validation
+const VALIDATED_JWT_SECRET: string = JWT_SECRET;
+const VALIDATED_GAME_ENCRYPTION_KEY: string = GAME_ENCRYPTION_KEY;
+
 // Middleware for JWT authentication
 const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
@@ -49,12 +53,12 @@ const handleValidationErrors = (req: Request, res: Response, next: NextFunction)
 
 // Game state encryption/decryption utilities
 const encryptGameState = (gameState: any): string => {
-  return CryptoJS.AES.encrypt(JSON.stringify(gameState), GAME_ENCRYPTION_KEY).toString();
+  return CryptoJS.AES.encrypt(JSON.stringify(gameState), VALIDATED_GAME_ENCRYPTION_KEY).toString();
 };
 
 const decryptGameState = (encryptedData: string): any => {
   try {
-    const bytes = CryptoJS.AES.decrypt(encryptedData, GAME_ENCRYPTION_KEY);
+    const bytes = CryptoJS.AES.decrypt(encryptedData, VALIDATED_GAME_ENCRYPTION_KEY);
     return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
   } catch (error) {
     throw new Error('Invalid game state data');
@@ -100,7 +104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate JWT
       const token = jwt.sign(
         { userId: user.id, username: user.username },
-        JWT_SECRET,
+        VALIDATED_JWT_SECRET,
         { expiresIn: '24h' }
       );
       
@@ -139,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate JWT
       const token = jwt.sign(
         { userId: user.id, username: user.username },
-        JWT_SECRET,
+        VALIDATED_JWT_SECRET,
         { expiresIn: '24h' }
       );
       
@@ -504,7 +508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate JWT for authenticated requests
       const token = jwt.sign(
         { userId: user.id, username: user.username, farcasterFid: fid },
-        JWT_SECRET,
+        VALIDATED_JWT_SECRET,
         { expiresIn: '24h' }
       );
       
