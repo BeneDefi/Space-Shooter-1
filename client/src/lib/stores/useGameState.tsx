@@ -86,12 +86,58 @@ export const useGameState = create<GameState>((set, get) => ({
       : 0;
     
     try {
-      // Save game session to backend
+      // Get authentication token - check for Farcaster context first
+      let authToken = localStorage.getItem('authToken');
+      
+      // If no token exists, try to get one using Farcaster context
+      if (!authToken) {
+        try {
+          // Get current Farcaster user context from global store
+          const miniKit = (window as any).__miniKitContext__;
+          if (miniKit?.user) {
+            console.log('🔐 Authenticating Farcaster user for game save...');
+            const authResponse = await fetch('/api/farcaster/auth', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                fid: miniKit.user.fid,
+                username: miniKit.user.username,
+                displayName: miniKit.user.displayName,
+                pfpUrl: miniKit.user.pfpUrl
+              }),
+            });
+            
+            if (authResponse.ok) {
+              const authData = await authResponse.json();
+              authToken = authData.token;
+              if (authToken) {
+                localStorage.setItem('authToken', authToken);
+                console.log('✅ Farcaster authentication successful');
+              }
+            } else {
+              console.error('❌ Farcaster authentication failed:', await authResponse.text());
+            }
+          } else {
+            console.log('⚠️ No Farcaster user context found');
+          }
+        } catch (authError) {
+          console.error('❌ Error during Farcaster authentication:', authError);
+        }
+      }
+      
+      // Save game session to backend (only if we have a valid token)
+      if (!authToken) {
+        console.error('❌ Cannot save game session: No authentication token available');
+        return;
+      }
+      
       const response = await fetch('/api/game/session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           score: state.score,

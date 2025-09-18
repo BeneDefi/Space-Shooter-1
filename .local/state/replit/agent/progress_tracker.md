@@ -5,3 +5,6 @@
 [x] 5. Fixed performance issues and power-up behavior problems
 [x] 6. Integrated GameOptimizer for better performance on mobile devices
 [x] 7. Resolved power-up duration coupling bug that caused misbehaving power-ups
+[x] 8. Fixed Farcaster authentication for game data persistence
+[x] 9. Added automatic user creation and JWT token generation for Farcaster users
+[x] 10. Updated game save logic to authenticate properly with Farcaster context

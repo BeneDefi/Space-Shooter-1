@@ -445,6 +445,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Farcaster authentication endpoint - create/find user and return JWT
+  app.post('/api/farcaster/auth', [
+    body('fid').isInt({ min: 1 }).withMessage('Valid Farcaster FID required'),
+    body('username').optional().isString().trim(),
+    body('displayName').optional().isString().trim(),
+    body('pfpUrl').optional().isURL().withMessage('Valid profile picture URL required'),
+    handleValidationErrors
+  ], async (req: Request, res: Response) => {
+    try {
+      const { fid, username, displayName, pfpUrl } = req.body;
+      
+      // Find existing user by Farcaster FID
+      let user = await storage.getUserByFarcasterFid?.(fid);
+      
+      if (!user) {
+        // Create new user for this Farcaster account
+        const userData = {
+          username: username || `farcaster_${fid}`,
+          password: 'farcaster_auth', // Placeholder - not used for Farcaster auth
+          displayName: displayName || `Player ${fid}`,
+          profilePicture: pfpUrl,
+          farcasterFid: fid,
+        };
+        user = await storage.createUser(userData);
+        
+        // Initialize player stats for new user
+        const statsExist = await storage.getPlayerStats(user.id);
+        if (!statsExist) {
+          await storage.updatePlayerStats(user.id, {
+            totalScore: 0,
+            highScore: 0,
+            enemiesDestroyed: 0,
+            gamesPlayed: 0,
+            timePlayedMinutes: 0,
+            streakDays: 1,
+            maxStreak: 1,
+            dailyLogins: 1,
+            socialShares: 0,
+            friendsInvited: 0,
+            lastLoginAt: new Date(),
+            lastPlayedAt: null,
+          });
+        }
+      } else {
+        // Update existing user's profile data if provided
+        if (displayName || pfpUrl) {
+          // Note: We'd need to add an updateUser method to storage for this
+          console.log('User profile update needed for FID:', fid);
+        }
+      }
+      
+      // Generate JWT for authenticated requests
+      const token = jwt.sign(
+        { userId: user.id, username: user.username, farcasterFid: fid },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+      
+      res.json({
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          displayName: user.displayName,
+          farcasterFid: user.farcasterFid
+        }
+      });
+    } catch (error) {
+      console.error('Farcaster auth error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // Get game sessions by Farcaster FID for profile page
   app.get('/api/player-sessions/:farcasterFid', [
     param('farcasterFid').isInt().withMessage('Invalid Farcaster FID'),
