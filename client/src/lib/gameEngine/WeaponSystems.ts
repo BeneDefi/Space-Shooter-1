@@ -16,6 +16,7 @@ export class WeaponSystem {
   private weaponEffects: Map<WeaponType, WeaponEffect> = new Map();
   private fireTimer: number = 0;
   private homeTargets: Array<{x: number, y: number}> = [];
+  private fireRate: number = 15; // Default fire rate
 
   public setWeapon(weapon: WeaponType, duration: number = 10000, ammo?: number) {
     const currentTime = Date.now();
@@ -64,6 +65,10 @@ export class WeaponSystem {
     this.homeTargets = enemies;
   }
 
+  public setFireRate(rate: number) {
+    this.fireRate = rate;
+  }
+
   public updateFireTimer() {
     this.fireTimer++;
   }
@@ -110,7 +115,7 @@ export class WeaponSystem {
   }
 
   public fire(playerX: number, playerY: number, bulletScale: number = 1.0): Bullet[] {
-    if (!this.canFire(15)) return [];
+    if (!this.canFire(this.fireRate)) return [];
 
     const bullets: Bullet[] = [];
     

@@ -7,6 +7,7 @@ import { PowerUp } from "./PowerUp";
 import { Boss, BossType } from "./Boss";
 import { EnemyFactory, EnemyVariant, EnemyBomber, EnemyKamikaze } from "./EnemyTypes";
 import { WeaponSystem } from "./WeaponSystems";
+import { GameOptimizer } from "../performance/GameOptimizer";
 
 export interface GameState {
   score: number;
@@ -57,6 +58,11 @@ export class GameEngine {
   
   // Responsive bullet scaling
   private bulletScale: number = 1.0;
+  
+  // Performance tracking
+  private lastFrameTime: number = 0;
+  private starField: Array<{x: number, y: number, size: number}> = [];
+  private frameCount: number = 0;
 
   constructor(ctx: CanvasRenderingContext2D, width: number, height: number) {
     this.ctx = ctx;
@@ -69,6 +75,12 @@ export class GameEngine {
     
     // Calculate initial bullet scale based on screen size
     this.updateBulletScale();
+    
+    // Initialize performance optimizer
+    GameOptimizer.initialize();
+    
+    // Generate star field
+    this.generateStarField();
     
     // Listen for touch controls
     window.addEventListener('playerMove', this.handlePlayerMove.bind(this));
@@ -131,6 +143,14 @@ export class GameEngine {
   }
 
   public update(): GameState {
+    // Track performance
+    const currentTime = performance.now();
+    if (this.lastFrameTime > 0) {
+      const deltaTime = currentTime - this.lastFrameTime;
+      GameOptimizer.trackFrameTime(deltaTime);
+    }
+    this.lastFrameTime = currentTime;
+    this.frameCount++;
     if (this.gameOver) {
       return { 
         score: this.score, 
@@ -167,9 +187,14 @@ export class GameEngine {
     // Update weapon targets for homing bullets
     this.weaponSystem.updateTargets(this.enemies);
     
-    // Handle power-ups by setting appropriate weapons
+    // Handle power-ups by setting appropriate weapons with correct durations
     if (this.player.hasPowerUp('multi-shot')) {
-      this.weaponSystem.setWeapon('spread', 1000); // Short duration to match power-up
+      this.weaponSystem.setWeapon('spread', 15000); // Match power-up duration
+    }
+    if (this.player.hasPowerUp('rapid-fire')) {
+      this.weaponSystem.setFireRate(5); // Faster fire rate
+    } else {
+      this.weaponSystem.setFireRate(15); // Normal fire rate
     }
     
     // Fire bullets using WeaponSystem
@@ -184,8 +209,9 @@ export class GameEngine {
 
     // Spawn enemies with level-based difficulty (only if no boss)
     if (!this.boss) {
+      const spawnDelay = this.player.hasPowerUp('slow-motion') ? this.enemySpawnDelay * 2 : this.enemySpawnDelay;
       this.enemySpawnTimer++;
-      if (this.enemySpawnTimer >= this.enemySpawnDelay) {
+      if (this.enemySpawnTimer >= spawnDelay) {
         const x = Math.random() * (this.width - 60) + 30;
         
         // Use enemy factory to create varied enemy types
@@ -537,8 +563,14 @@ export class GameEngine {
   }
 
   private createExplosion(x: number, y: number, color: string) {
-    for (let i = 0; i < 8; i++) {
-      const angle = (Math.PI * 2 * i) / 8;
+    // Limit particles based on performance
+    if (GameOptimizer.shouldLimitParticles(this.particles.length)) {
+      return;
+    }
+    
+    const particleCount = GameOptimizer.getOptimalParticleCount() / 10; // Reduce from 8 to dynamic
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (Math.PI * 2 * i) / particleCount;
       const speed = Math.random() * 3 + 2;
       this.particles.push(new Particle(
         x,
@@ -571,6 +603,11 @@ export class GameEngine {
   }
 
   public render() {
+    // Skip frame if performance is poor
+    if (GameOptimizer.shouldSkipFrame()) {
+      return;
+    }
+    
     // Clear canvas
     this.ctx.fillStyle = 'rgba(0, 0, 20, 0.2)';
     this.ctx.fillRect(0, 0, this.width, this.height);
@@ -596,17 +633,37 @@ export class GameEngine {
     // Render power-ups
     this.powerUps.forEach(powerUp => powerUp.render(this.ctx));
 
-    // Render particles
-    this.particles.forEach(particle => particle.render(this.ctx));
+    // Render particles with batching for better performance
+    if (GameOptimizer.getQualityLevel() === 'low') {
+      GameOptimizer.batchRenderParticles(this.ctx, this.particles);
+    } else {
+      this.particles.forEach(particle => particle.render(this.ctx));
+    }
+  }
+
+  private generateStarField() {
+    this.starField = [];
+    const starCount = GameOptimizer.getQualityLevel() === 'low' ? 25 : 50;
+    for (let i = 0; i < starCount; i++) {
+      this.starField.push({
+        x: Math.random() * this.width,
+        y: Math.random() * this.height,
+        size: Math.random() * 1.5 + 0.5
+      });
+    }
   }
 
   private renderStars() {
     this.ctx.fillStyle = '#ffffff';
-    for (let i = 0; i < 50; i++) {
-      const x = (i * 37) % this.width;
-      const y = (i * 47 + Date.now() * 0.05) % this.height;
-      const size = Math.sin(i) * 0.5 + 1;
-      this.ctx.fillRect(x, y, size, size);
+    const scrollSpeed = this.player.hasPowerUp('slow-motion') ? 0.25 : 1;
+    
+    for (const star of this.starField) {
+      star.y += scrollSpeed;
+      if (star.y > this.height) {
+        star.y = -5;
+        star.x = Math.random() * this.width;
+      }
+      this.ctx.fillRect(star.x, star.y, star.size, star.size);
     }
   }
 }
