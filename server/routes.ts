@@ -9,8 +9,13 @@ import type { Request, Response, NextFunction } from "express";
 import CryptoJS from "crypto-js";
 import path from "path";
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
-const GAME_ENCRYPTION_KEY = process.env.GAME_ENCRYPTION_KEY || 'dev-game-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+const GAME_ENCRYPTION_KEY = process.env.GAME_ENCRYPTION_KEY;
+
+if (!JWT_SECRET || !GAME_ENCRYPTION_KEY) {
+  console.error('Missing required environment variables: JWT_SECRET and/or GAME_ENCRYPTION_KEY');
+  process.exit(1);
+}
 
 // Middleware for JWT authentication
 const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
