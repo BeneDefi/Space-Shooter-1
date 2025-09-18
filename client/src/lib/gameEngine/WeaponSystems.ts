@@ -69,6 +69,21 @@ export class WeaponSystem {
     this.fireRate = rate;
   }
 
+  public clearWeapon(weaponType?: WeaponType) {
+    if (weaponType) {
+      const effect = this.weaponEffects.get(weaponType);
+      if (effect) {
+        effect.isActive = false;
+      }
+      if (this.currentWeapon === weaponType) {
+        this.currentWeapon = 'basic';
+      }
+    } else {
+      // Clear current weapon
+      this.currentWeapon = 'basic';
+    }
+  }
+
   public updateFireTimer() {
     this.fireTimer++;
   }

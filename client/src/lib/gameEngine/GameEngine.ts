@@ -63,6 +63,9 @@ export class GameEngine {
   private lastFrameTime: number = 0;
   private starField: Array<{x: number, y: number, size: number}> = [];
   private frameCount: number = 0;
+  
+  // Power-up state tracking to prevent duration coupling
+  private activePowerUpStates: Map<string, boolean> = new Map();
 
   constructor(ctx: CanvasRenderingContext2D, width: number, height: number) {
     this.ctx = ctx;
@@ -187,10 +190,24 @@ export class GameEngine {
     // Update weapon targets for homing bullets
     this.weaponSystem.updateTargets(this.enemies);
     
-    // Handle power-ups by setting appropriate weapons with correct durations
-    if (this.player.hasPowerUp('multi-shot')) {
-      this.weaponSystem.setWeapon('spread', 15000); // Match power-up duration
+    // Handle power-ups with edge-triggered state changes to prevent duration coupling
+    const hasMultiShot = this.player.hasPowerUp('multi-shot');
+    const wasMultiShotActive = this.activePowerUpStates.get('multi-shot') || false;
+    
+    if (hasMultiShot && !wasMultiShotActive) {
+      // Just activated multi-shot - get remaining duration from player
+      const multiShotEffect = this.player.getActivePowerUps().find(p => p.type === 'multi-shot');
+      if (multiShotEffect) {
+        const remainingTime = multiShotEffect.duration - (Date.now() - multiShotEffect.startTime);
+        this.weaponSystem.setWeapon('spread', Math.max(0, remainingTime));
+      }
+    } else if (!hasMultiShot && wasMultiShotActive) {
+      // Just deactivated multi-shot - revert to basic weapon
+      this.weaponSystem.clearWeapon('spread');
     }
+    this.activePowerUpStates.set('multi-shot', hasMultiShot);
+    
+    // Handle rapid-fire (immediate effect, no duration coupling)
     if (this.player.hasPowerUp('rapid-fire')) {
       this.weaponSystem.setFireRate(5); // Faster fire rate
     } else {
@@ -207,11 +224,17 @@ export class GameEngine {
       window.dispatchEvent(new CustomEvent('bulletFired'));
     }
 
-    // Spawn enemies with level-based difficulty (only if no boss)
+    // Spawn enemies with level-based difficulty (only if no boss), respecting performance limits
     if (!this.boss) {
+      // Slow-motion effect
       const spawnDelay = this.player.hasPowerUp('slow-motion') ? this.enemySpawnDelay * 2 : this.enemySpawnDelay;
+      
+      // Performance-based enemy limit
+      const maxEnemies = GameOptimizer.getQualityLevel() === 'low' ? 8 : 
+                         GameOptimizer.getQualityLevel() === 'medium' ? 12 : 16;
+      
       this.enemySpawnTimer++;
-      if (this.enemySpawnTimer >= spawnDelay) {
+      if (this.enemySpawnTimer >= spawnDelay && this.enemies.length < maxEnemies) {
         const x = Math.random() * (this.width - 60) + 30;
         
         // Use enemy factory to create varied enemy types
@@ -563,30 +586,47 @@ export class GameEngine {
   }
 
   private createExplosion(x: number, y: number, color: string) {
-    // Limit particles based on performance
+    // Respect particle limits based on performance
     if (GameOptimizer.shouldLimitParticles(this.particles.length)) {
       return;
     }
     
-    const particleCount = GameOptimizer.getOptimalParticleCount() / 10; // Reduce from 8 to dynamic
+    // Dynamic particle count based on performance
+    const baseCount = 8;
+    const qualityMultiplier = GameOptimizer.getQualityLevel() === 'low' ? 0.25 : 
+                             GameOptimizer.getQualityLevel() === 'medium' ? 0.5 : 1.0;
+    const particleCount = Math.max(2, Math.floor(baseCount * qualityMultiplier));
+    
     for (let i = 0; i < particleCount; i++) {
       const angle = (Math.PI * 2 * i) / particleCount;
       const speed = Math.random() * 3 + 2;
-      this.particles.push(new Particle(
+      const particle = new Particle(
         x,
         y,
         Math.cos(angle) * speed,
         Math.sin(angle) * speed,
         color,
         30
-      ));
+      );
+      this.particles.push(particle);
     }
   }
 
   private createBigExplosion(x: number, y: number) {
-    // Create larger explosion for boss defeat
-    for (let i = 0; i < 20; i++) {
-      const angle = (Math.PI * 2 * i) / 20;
+    // Create larger explosion for boss defeat, respecting performance limits
+    if (GameOptimizer.shouldLimitParticles(this.particles.length)) {
+      // Fall back to smaller explosion if at particle limit
+      this.createExplosion(x, y, '#ff4400');
+      return;
+    }
+    
+    const baseCount = 20;
+    const qualityMultiplier = GameOptimizer.getQualityLevel() === 'low' ? 0.3 : 
+                             GameOptimizer.getQualityLevel() === 'medium' ? 0.6 : 1.0;
+    const particleCount = Math.max(6, Math.floor(baseCount * qualityMultiplier));
+    
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (Math.PI * 2 * i) / particleCount;
       const speed = Math.random() * 5 + 3;
       const colors = ['#ff4400', '#ffaa00', '#ff0044', '#ffffff'];
       const color = colors[Math.floor(Math.random() * colors.length)];
