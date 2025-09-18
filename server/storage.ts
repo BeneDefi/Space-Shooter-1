@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
-import { eq, desc, and, gte, lte, ilike, or } from "drizzle-orm";
+import { eq, desc, and, gte, lte, ilike, or, sql } from "drizzle-orm";
 import { 
   users, 
   playerStats, 
