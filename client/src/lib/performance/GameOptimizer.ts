@@ -41,10 +41,15 @@ export class GameOptimizer {
       }
       
       // Check WebGL capabilities
-      if (gl) {
-        const renderer = gl.getParameter(gl.RENDERER);
-        if (renderer.includes('Mali') || renderer.includes('Adreno 3')) {
-          tier = 'low';
+      if (gl && 'getParameter' in gl) {
+        try {
+          const webgl = gl as WebGLRenderingContext;
+          const renderer = webgl.getParameter(webgl.RENDERER);
+          if (renderer && typeof renderer === 'string' && (renderer.includes('Mali') || renderer.includes('Adreno 3'))) {
+            tier = 'low';
+          }
+        } catch (error) {
+          console.warn('Could not detect WebGL renderer:', error);
         }
       } else {
         tier = 'low';

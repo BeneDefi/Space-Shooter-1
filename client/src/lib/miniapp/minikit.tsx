@@ -102,6 +102,9 @@ export function MiniKitProvider({ children }: MiniKitProviderProps) {
             console.log("🖼️ Profile picture URL:", userData.pfpUrl);
             setUser(userData);
             setIsConnected(true);
+            
+            // Update global context for game authentication
+            (window as any).__miniKitContext__ = { user: userData, context: contextData };
           } else {
             console.log("👤 No user found in Farcaster context - setting up test user");
             // Set test user when no Farcaster user is available (standalone mode)
@@ -140,6 +143,9 @@ export function MiniKitProvider({ children }: MiniKitProviderProps) {
       // Mark as ready immediately (don't wait for context)
       setIsReady(true);
       console.log("🎉 MiniKit initialization completed");
+      
+      // Store context globally for game authentication
+      (window as any).__miniKitContext__ = { user, context };
     };
 
     // Initialize immediately
