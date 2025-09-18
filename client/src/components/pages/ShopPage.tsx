@@ -64,24 +64,9 @@ export default function ShopPage({ onBack }: ShopPageProps) {
   const availableTokens = Math.floor(stats.totalScore / 100) + (stats.enemiesDestroyed * 2);
   
   const handlePurchaseAttempt = (item: typeof shopItems[0]) => {
-    if (availableTokens >= item.price) {
-      // Simulate successful purchase
-      const purchase = {
-        id: Date.now(),
-        itemName: item.name,
-        itemType: item.category,
-        price: item.price,
-        currency: 'GALAXIGA',
-        purchasedAt: new Date(),
-      };
-      
-      addPurchase(purchase);
-      setToastMessage(`🚀 Successfully purchased ${item.name}! This will be available in future versions.`);
-      setShowToast(true);
-    } else {
-      setToastMessage('🚫 Insufficient GALAXIGA tokens! Play more to earn tokens.');
-      setShowToast(true);
-    }
+    // Prevent all purchases and show the specified message
+    setToastMessage('Stay engaged! Shop functionality will come with the next version!');
+    setShowToast(true);
   };
     
   return (

@@ -1,7 +1,7 @@
-import { Bullet } from './Bullet';
+import { Bullet, BulletSize, BulletEffectType } from './Bullet';
 import { Particle } from './Particle';
 
-export type WeaponType = 'basic' | 'laser' | 'spread' | 'homing' | 'plasma';
+export type WeaponType = 'basic' | 'laser' | 'spread' | 'homing' | 'plasma' | 'explosive' | 'piercing' | 'bouncing' | 'splitting' | 'energy' | 'charged' | 'ultimate';
 
 export interface WeaponEffect {
   type: WeaponType;
@@ -89,6 +89,20 @@ export class WeaponSystem {
         return Math.floor(baseDelay * 2); // Much slower
       case 'plasma':
         return Math.floor(baseDelay * 0.8); // Slightly faster
+      case 'explosive':
+        return Math.floor(baseDelay * 2.5); // Slow for balance
+      case 'piercing':
+        return Math.floor(baseDelay * 0.7); // Fast
+      case 'bouncing':
+        return Math.floor(baseDelay * 1.2); // Slightly slower
+      case 'splitting':
+        return Math.floor(baseDelay * 1.8); // Slower
+      case 'energy':
+        return Math.floor(baseDelay * 1.0); // Standard
+      case 'charged':
+        return Math.floor(baseDelay * 3); // Very slow, high damage
+      case 'ultimate':
+        return Math.floor(baseDelay * 6); // Extremely slow, devastating
       case 'basic':
       default:
         return baseDelay;
@@ -115,12 +129,13 @@ export class WeaponSystem {
           -8,
           7 * bulletScale,
           '#00ff00',
-          'player'
+          'player',
+          'medium',
+          'basic'
         ));
         break;
 
       case 'laser':
-        // Thin, fast beam
         bullets.push(new Bullet(
           playerX,
           playerY - 20,
@@ -128,12 +143,13 @@ export class WeaponSystem {
           -12,
           4 * bulletScale,
           '#ff00ff',
-          'player'
+          'player',
+          'small',
+          'piercing'
         ));
         break;
 
       case 'spread':
-        // 5-way spread
         const spreadAngles = [-0.6, -0.3, 0, 0.3, 0.6];
         for (const angle of spreadAngles) {
           bullets.push(new Bullet(
@@ -143,13 +159,14 @@ export class WeaponSystem {
             -8 * Math.cos(angle),
             6 * bulletScale,
             '#ffaa00',
-            'player'
+            'player',
+            'small',
+            'basic'
           ));
         }
         break;
 
       case 'homing':
-        // Homing missile
         if (this.homeTargets.length > 0) {
           const target = this.homeTargets[Math.floor(Math.random() * this.homeTargets.length)];
           const dx = target.x - playerX;
@@ -169,7 +186,6 @@ export class WeaponSystem {
             ));
           }
         } else {
-          // No targets, fire straight
           bullets.push(new Bullet(
             playerX,
             playerY - 20,
@@ -177,13 +193,14 @@ export class WeaponSystem {
             -6,
             8 * bulletScale,
             '#00ffff',
-            'player'
+            'player',
+            'medium',
+            'basic'
           ));
         }
         break;
 
       case 'plasma':
-        // Large, slow-moving plasma bolt
         bullets.push(new PlasmaBullet(
           playerX,
           playerY - 20,
@@ -194,6 +211,119 @@ export class WeaponSystem {
           'player'
         ));
         break;
+
+      case 'explosive':
+        bullets.push(new Bullet(
+          playerX,
+          playerY - 20,
+          0,
+          -7,
+          10 * bulletScale,
+          '#ff4400',
+          'player',
+          'large',
+          'explosive'
+        ));
+        break;
+
+      case 'piercing':
+        bullets.push(new Bullet(
+          playerX,
+          playerY - 20,
+          0,
+          -10,
+          6 * bulletScale,
+          '#ffffff',
+          'player',
+          'small',
+          'piercing'
+        ));
+        break;
+
+      case 'bouncing':
+        bullets.push(new Bullet(
+          playerX,
+          playerY - 20,
+          Math.random() * 4 - 2,
+          -6,
+          8 * bulletScale,
+          '#00aaff',
+          'player',
+          'medium',
+          'bouncing'
+        ));
+        break;
+
+      case 'splitting':
+        bullets.push(new SplittingBullet(
+          playerX,
+          playerY - 20,
+          0,
+          -8,
+          9 * bulletScale,
+          '#aa00ff',
+          'player'
+        ));
+        break;
+
+      case 'energy':
+        bullets.push(new Bullet(
+          playerX,
+          playerY - 20,
+          0,
+          -9,
+          8 * bulletScale,
+          '#00ffaa',
+          'player',
+          'medium',
+          'energy'
+        ));
+        break;
+
+      case 'charged':
+        bullets.push(new Bullet(
+          playerX,
+          playerY - 20,
+          0,
+          -6,
+          12 * bulletScale,
+          '#ffff00',
+          'player',
+          'large',
+          'charged'
+        ));
+        break;
+
+      case 'ultimate':
+        // Screen-clearing ultimate weapon
+        bullets.push(new Bullet(
+          playerX,
+          playerY - 20,
+          0,
+          -4,
+          20 * bulletScale,
+          '#ff00ff',
+          'player',
+          'massive',
+          'ultimate'
+        ));
+        // Add side projectiles
+        for (let i = -2; i <= 2; i++) {
+          if (i !== 0) {
+            bullets.push(new Bullet(
+              playerX + i * 30,
+              playerY - 10,
+              i * 2,
+              -6,
+              8 * bulletScale,
+              '#ff00ff',
+              'player',
+              'medium',
+              'energy'
+            ));
+          }
+        }
+        break;
     }
 
     return bullets;
@@ -202,13 +332,27 @@ export class WeaponSystem {
   public getWeaponDescription(weapon: WeaponType): string {
     switch (weapon) {
       case 'laser':
-        return 'High-speed laser beam';
+        return 'High-speed piercing laser beam';
       case 'spread':
         return 'Five-way spread shot';
       case 'homing':
         return 'Auto-targeting missiles';
       case 'plasma':
         return 'Devastating plasma cannon';
+      case 'explosive':
+        return 'Area-damage explosive rounds';
+      case 'piercing':
+        return 'Armor-penetrating bullets';
+      case 'bouncing':
+        return 'Ricocheting projectiles';
+      case 'splitting':
+        return 'Bullets that split mid-flight';
+      case 'energy':
+        return 'Pulsing energy projectiles';
+      case 'charged':
+        return 'High-damage charged shots';
+      case 'ultimate':
+        return 'Screen-clearing mega weapon';
       case 'basic':
       default:
         return 'Standard blaster';
@@ -277,21 +421,14 @@ export class HomingBullet extends Bullet {
 }
 
 export class PlasmaBullet extends Bullet {
-  private pulseTime: number = 0;
-  
   constructor(x: number, y: number, vx: number, vy: number, radius: number, color: string, type: 'player' | 'enemy') {
-    super(x, y, vx, vy, radius, color, type);
-  }
-
-  public update() {
-    super.update();
-    this.pulseTime += 0.2;
+    super(x, y, vx, vy, radius, color, type, 'large', 'energy');
   }
 
   public render(ctx: CanvasRenderingContext2D) {
     ctx.save();
     
-    // Pulsing glow effect
+    // Pulsing glow effect using base class pulseTime
     const glowIntensity = 0.8 + 0.4 * Math.sin(this.pulseTime * 3);
     ctx.shadowColor = this.color;
     ctx.shadowBlur = 15 * glowIntensity;
@@ -307,6 +444,89 @@ export class PlasmaBullet extends Bullet {
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.width/4, 0, Math.PI * 2);
     ctx.fill();
+    
+    ctx.restore();
+  }
+}
+
+export class SplittingBullet extends Bullet {
+  private hasSplit: boolean = false;
+  private spawnY: number;
+  private splitDistance: number = 100;
+
+  constructor(x: number, y: number, vx: number, vy: number, radius: number, color: string, type: 'player' | 'enemy') {
+    super(x, y, vx, vy, radius, color, type, 'medium', 'splitting');
+    this.spawnY = y;
+  }
+
+  public update() {
+    super.update();
+    
+    // Check if should split based on distance traveled from spawn point
+    const distanceTraveled = Math.abs(this.y - this.spawnY);
+    if (!this.hasSplit && distanceTraveled >= this.splitDistance) {
+      this.hasSplit = true;
+    }
+  }
+
+  public shouldSplit(): boolean {
+    return this.hasSplit;
+  }
+
+  public createSplitBullets(): Bullet[] {
+    const splitBullets: Bullet[] = [];
+    
+    // Create 3 smaller bullets with proper radius values
+    const angles = [-0.4, 0, 0.4];
+    const splitRadius = this.width * 0.3; // Use proper radius, not width
+    
+    for (const angle of angles) {
+      splitBullets.push(new Bullet(
+        this.x,
+        this.y,
+        Math.sin(angle) * 6,
+        this.vy * 1.2,
+        splitRadius,
+        this.color,
+        this.type,
+        'small',
+        'basic'
+      ));
+    }
+    
+    return splitBullets;
+  }
+
+  public render(ctx: CanvasRenderingContext2D) {
+    ctx.save();
+    
+    // Unstable energy effect
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 8 + Math.random() * 4;
+    
+    // Main bullet with crackling effect
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.width/2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Crackling energy lines
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.7;
+    
+    for (let i = 0; i < 4; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const length = this.width * (0.3 + Math.random() * 0.4);
+      
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(
+        this.x + Math.cos(angle) * length,
+        this.y + Math.sin(angle) * length
+      );
+      ctx.stroke();
+    }
     
     ctx.restore();
   }
