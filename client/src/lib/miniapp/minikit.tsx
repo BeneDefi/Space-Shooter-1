@@ -138,9 +138,16 @@ export function MiniKitProvider({ children }: MiniKitProviderProps) {
             
             // Update global context for game authentication
             (window as any).__miniKitContext__ = { user: userData, context: contextData };
+            console.log("🌐 Global MiniKit context set on window:", (window as any).__miniKitContext__);
             
             // Authenticate with server immediately
-            await authenticateUserWithServer(userData);
+            console.log("🔄 Starting server authentication for Farcaster user...");
+            const authToken = await authenticateUserWithServer(userData);
+            if (authToken) {
+              console.log("✅ MiniKit initialization: Server authentication completed successfully");
+            } else {
+              console.error("❌ MiniKit initialization: Server authentication failed");
+            }
           } else {
             console.log("👤 No user found in Farcaster context - setting up test user");
             // Set test user when no Farcaster user is available (standalone mode)
@@ -158,9 +165,16 @@ export function MiniKitProvider({ children }: MiniKitProviderProps) {
             
             // Update global context for game authentication
             (window as any).__miniKitContext__ = { user: testUser, context: null };
+            console.log("🌐 Global MiniKit context set for test user:", (window as any).__miniKitContext__);
             
             // Authenticate test user with server immediately
-            await authenticateUserWithServer(testUser);
+            console.log("🔄 Starting server authentication for test user...");
+            const authToken = await authenticateUserWithServer(testUser);
+            if (authToken) {
+              console.log("✅ Test user authentication completed successfully");
+            } else {
+              console.error("❌ Test user authentication failed");
+            }
           }
         } catch (contextError) {
           console.log("📱 SDK context failed (running in standalone):", contextError);
@@ -179,9 +193,16 @@ export function MiniKitProvider({ children }: MiniKitProviderProps) {
           
           // Update global context for game authentication
           (window as any).__miniKitContext__ = { user: fallbackTestUser, context: null };
+          console.log("🌐 Global MiniKit context set for fallback user:", (window as any).__miniKitContext__);
           
           // Authenticate fallback test user with server immediately
-          await authenticateUserWithServer(fallbackTestUser);
+          console.log("🔄 Starting server authentication for fallback user...");
+          const authToken = await authenticateUserWithServer(fallbackTestUser);
+          if (authToken) {
+            console.log("✅ Fallback user authentication completed successfully");
+          } else {
+            console.error("❌ Fallback user authentication failed");
+          }
         }
       };
 
