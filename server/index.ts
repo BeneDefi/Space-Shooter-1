@@ -148,7 +148,7 @@ app.use((req, res, next) => {
     });
   }
 
-  const port = 5000;
+  const port = Number(process.env.PORT) ||5000;
   server.listen(
     {
       port,
